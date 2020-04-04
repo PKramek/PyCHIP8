@@ -2,5 +2,8 @@ class Config:
     STACK_POINTER = 0x52
     MAX_MEMORY = 4096
     PROGRAM_COUNTER = 0x200
+    NUMBER_OF_REGISTERS = 0x10
 
-
+class Constants:
+    NORMAL_MODE = 'NORMAL'
+    EXTENDED_MODE = 'EXTENDED'
