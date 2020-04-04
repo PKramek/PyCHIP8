@@ -1,0 +1,6 @@
+class Config:
+    STACK_POINTER = 0x52
+    MAX_MEMORY = 4096
+    PROGRAM_COUNTER = 0x200
+
+
