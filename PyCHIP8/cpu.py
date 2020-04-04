@@ -37,7 +37,7 @@ class CPU:
 
         # Python dictionary is used in place of if-else statements when deciding what method to call
         # In most cases opcodes are determined by four oldest bits and in this dict only those bits are used
-        self.instruction_lookup = {
+        self.opcode_lookup = {
             0x0: self.execute_leading_zero_opcodes,
             0x1: self.jump_to_address,
             0x2: self.jump_to_subroutine,
@@ -63,17 +63,27 @@ class CPU:
         }
 
         self.leading_eight_opcodes_lookup = {
+            0x0: self.move_register_to_register,
+            0x1: self.register_logical_or_register,
+            0x2: self.register_logical_and_register,
+            0x3: self.register_logical_xor_register,
+            0x4: self.add_register_to_register,
+            0x5: self.subtract_register_from_register,
+            0x6: self.shift_register_right,
+            0x7: self.negative_subtract_register_from_register,
+            0xE: self.shift_register_left
+
 
         }
 
     def execute_opcode(self) -> None:
         # Get next opcode from memory, opcode is 2 byte so we need two consecutive memory cells
-        self.opcode = (int(self.memory[self.pc]) << 8) | int(self.memory[self.pc + 1])
+        self.opcode = (self.memory[self.pc] << 8) | self.memory[self.pc + 1]
         self.pc += 2
 
         four_oldest_bits = (self.opcode & 0xF000) >> 12
 
-        self.instruction_lookup[four_oldest_bits]()
+        self.opcode_lookup[four_oldest_bits]()
 
     def execute_leading_zero_opcodes(self):
         # To remove redundant scroll down and up methods we check if there is C or B on second youngest digit in opcode
@@ -127,7 +137,7 @@ class CPU:
         Return from subroutine by subtracting 1 from SP and setting PC to value from memory pointed to by SP
         """
         self.sp -= 2
-        self.pc = self.memory[self.sp + 1] << 8 | self.memory[self.sp]
+        self.pc = (self.memory[self.sp + 1] << 8) | self.memory[self.sp]
 
     def screen_scroll_right(self):
         """"
@@ -272,6 +282,140 @@ class CPU:
         x = (self.opcode & 0x0F00) >> 8
         y = (self.opcode & 0x00F0) >> 4
         self.v[x] = self.v[y]
+
+    def register_logical_or_register(self):
+        """"
+        Opcode: 0x8XY1
+        Mnemonic: OR VX, VY
+
+        Sets value in register Vx to result of performing logical OR on Vx and Vy registers
+        x is stored in bits 8-11 of opcode
+        y is stored in bits 4-7 of opcode
+        """
+        x = (self.opcode & 0x0F00) >> 8
+        y = (self.opcode & 0x00F0) >> 4
+        self.v[x] |= self.v[y]
+
+    def register_logical_and_register(self):
+        """"
+        Opcode: 0x8XY2
+        Mnemonic: AND VX, VY
+
+        Sets value in register Vx to result of performing logical AND on Vx and Vy registers
+        x is stored in bits 8-11 of opcode
+        y is stored in bits 4-7 of opcode
+        """
+        x = (self.opcode & 0x0F00) >> 8
+        y = (self.opcode & 0x00F0) >> 4
+        self.v[x] &= self.v[y]
+
+    def register_logical_xor_register(self):
+        """"
+        Opcode: 0x8XY3
+        Mnemonic: XOR VX, VY
+
+        Sets value in register Vx to result of performing logical XOR on Vx and Vy registers
+        x is stored in bits 8-11 of opcode
+        y is stored in bits 4-7 of opcode
+        """
+        x = (self.opcode & 0x0F00) >> 8
+        y = (self.opcode & 0x00F0) >> 4
+        self.v[x] ^= self.v[y]
+
+    def add_register_to_register(self):
+        """"
+        Opcode: 0x8XY4
+        Mnemonic: ADD VX, VY
+
+        Sets value in register Vx to sum of values in registers Vx and Vy, VF is set to 1 if there is overflow
+        x is stored in bits 8-11 of opcode
+        y is stored in bits 4-7 of opcode
+        """
+        x = (self.opcode & 0x0F00) >> 8
+        y = (self.opcode & 0x00F0) >> 4
+
+        sum = self.v[x] + self.v[y]
+
+        if sum > 255:
+            self.v[x] = sum - 256
+            self.v[0xF] = 1
+        else:
+            self.v[x] = sum
+            self.v[0xF] = 0
+
+    def subtract_register_from_register(self):
+        """"
+        Opcode: 0x8XY5
+        Mnemonic: SUB VX, VY
+
+        Sets value in register Vx to result of subtraction of values in registers Vx and Vy,
+        VF is set to 1 if there is borrow not generated
+
+        x is stored in bits 8-11 of opcode
+        y is stored in bits 4-7 of opcode
+        """
+        x = (self.opcode & 0x0F00) >> 8
+        y = (self.opcode & 0x00F0) >> 4
+
+        if self.v[x] > self.v[y]:
+            self.v[x] -= self.v[y]
+            self.v[0xF] = 1
+        else:
+            self.v[x] -= self.v[y] - 256
+            self.v[0xF] = 0
+
+    def shift_register_right(self):
+        """"
+        Opcode: 0x8XY6
+        Mnemonic: SHR VX
+
+        Stores the least significant bit of Vx in VF and shifts Vx to right once*
+        x is stored in bits 8-11 of opcode
+
+        *In original CHIP-8 this instruction would store shifted right value of Vy in Vx, but every emulator and rom
+        today uses behavior described above
+        """
+        x = (self.opcode & 0x0F00) >> 8
+
+        self.v[0xF] = (self.v[x] & 0x1)
+        self.v[x] = self.v[x] >> 1
+
+    def negative_subtract_register_from_register(self):
+        """"
+        Opcode: 0x8XY8
+        Mnemonic: SUBN VX, VY
+
+        Sets value in register Vx to result of subtraction of values in registers Vy and Vx,
+        VF is set to 1 if there is borrow not generated
+
+        x is stored in bits 8-11 of opcode
+        y is stored in bits 4-7 of opcode
+        """
+        x = (self.opcode & 0x0F00) >> 8
+        y = (self.opcode & 0x00F0) >> 4
+
+        if self.v[y] > self.v[x]:
+            self.v[x] = self.v[y] - self.v[x]
+            self.v[0xF] = 1
+        else:
+            self.v[x] = self.v[y] + 256 - self.v[x]
+            self.v[0xF] = 0
+
+    def shift_register_left(self):
+        """"
+        Opcode: 0x8XYE
+        Mnemonic: SHL VX
+
+        Stores the most significant bit of Vx in VF and shifts Vx to left once*
+        x is stored in bits 8-11 of opcode
+
+        *In original CHIP-8 this instruction would store shifted left value of Vy in Vx, but every emulator and rom
+        today uses behavior described above
+        """
+        x = (self.opcode & 0x0F00) >> 8
+
+        self.v[0xF] = (self.v[x] & 0x80) >> 8
+        self.v[x] = self.v[x] << 1
 
     def skip_if_register_not_equal_other_register(self):
         """"
