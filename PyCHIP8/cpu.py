@@ -1,3 +1,5 @@
+from random import randint
+
 from PyCHIP8.conf import Config
 from PyCHIP8.conf import Constants
 from PyCHIP8.screen import Screen
@@ -48,6 +50,10 @@ class CPU:
             0x7: self.add_value_to_register,
             0x8: self.execute_leading_eight_opcodes,
             0x9: self.skip_if_register_not_equal_other_register,
+            0xA: self.move_value_to_index,
+            0xB: self.jump_to_address_plus_v_zero,
+            0xC: self.generate_random_number,
+            0xD: self.draw_sprite,
 
         }
 
@@ -72,7 +78,6 @@ class CPU:
             0x6: self.shift_register_right,
             0x7: self.negative_subtract_register_from_register,
             0xE: self.shift_register_left
-
 
         }
 
@@ -201,7 +206,6 @@ class CPU:
         Mnemonic: CALL NNN
 
         Saves current context ( value of PC ) in memory and sets PC to value defined in 12 youngest bits of Opcode
-        NN is stored in bits 0-11 of opcode
         """
         self.memory[self.sp] = self.pc & 0x00FF
         self.pc += 1
@@ -253,7 +257,7 @@ class CPU:
         Opcode: 0x6XNN
         Mnemonic: LD VX, NN
 
-        Loads value in 8 youngest bits of opcode to register Vx
+        Loads value stored in 8 youngest bits of opcode to register Vx
         x is stored in bits 8-11 of opcode
         """
         x = (self.opcode & 0x0F00) >> 8
@@ -430,3 +434,48 @@ class CPU:
         y = (self.opcode & 0x00F0) >> 4
         if self.v[x] != self.v[y]:
             self.pc += 2
+
+    def move_value_to_index(self):
+        """"
+        Opcode: 0xANNN
+        Mnemonic: LD I, NNN
+
+        Loads value stored in 12 youngest bits of opcode to index register
+        """
+        self.i = (self.opcode & 0x0FFF)
+
+    def jump_to_address_plus_v_zero(self):
+        """"
+        Opcode: 0xBNNN
+        Mnemonic: JP V0, NNN
+
+        Sets PC to value defined in 12 youngest bits of Opcode plus value stored in register V0
+        """
+        self.pc = self.v[0] + (self.opcode & 0x0FFF)
+
+    def generate_random_number(self):
+        """"
+        Opcode: 0xCXNN
+        Mnemonic: RND VX, NN
+
+        Sets value in register Vx as a result of logical AND operation between random number from range (0, 255) and
+        value stored in 8 youngest bits of opcode
+        """
+        x = (self.opcode & 0x0F00) >> 8
+
+        self.v[x] = (self.opcode & 0x00FF) & randint(0, 255)
+
+    def draw_sprite(self):
+        # TODO draw_sprite
+        """"
+        Opcode: 0xDXYN
+        Mnemonic: DRW VX, VY, N
+
+        Display
+        """
+
+    def draw_in_extended_screen(self):
+        pass
+
+    def draw_in_normal_screen(self):
+        pass
