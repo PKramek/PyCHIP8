@@ -1,6 +1,7 @@
 from random import randint
 
-from pygame import key
+import pygame
+from pygame import key, KEYDOWN
 
 from PyCHIP8.conf import Config
 from PyCHIP8.conf import Constants
@@ -10,26 +11,24 @@ from PyCHIP8.screen import Screen
 class CPU:
     """"
     This class is used to emulate CHIP-8 CPU.
-
-    CHIP-8 CPU has
-        - 16 8-bit general purpose registers - Vx
-        - 1 16-bit stack pointer - SP
-        - 1 16-bit program counter - PC
-        - 1 16-bit index register - I
-        - 1 8-bit delay timer - DT
-        - 1 8-bit sound timer - ST
     """
 
     class UnknownInstructionException(Exception):
+        """
+        Inner class that extends Exception and is used to throw exception where emulator tries to execute
+        not known instruction
+        """
+
         def __init__(self, opcode):
-            Exception.__init__(self, "Unkown instruction {}".format(opcode))
+            Exception.__init__(self, "Unknown instruction {}".format(opcode))
 
     def __init__(self, screen: Screen):
         """
         This method initializes CPU. Object of class screen is necessary to be able to operate on screen in some
         opcodes
-        """
 
+        :param screen: Screen class object on which emulator will draw pixels
+        """
         self.screen = screen
         self.opcode = 0
         self.memory = bytearray(Config.MAX_MEMORY)
@@ -42,6 +41,11 @@ class CPU:
 
         self.timer_dt = 0
         self.timer_st = 0
+
+        self.running = False
+
+        # Flag used to define if sound should be played
+        self.sound_flag = True
 
         # Python dictionary is used in place of if-else statements when deciding what method to call
         # In most cases opcodes are determined by four oldest bits and in this dict only those bits are used
@@ -65,7 +69,6 @@ class CPU:
         }
 
         self.leading_zero_opcodes_lookup = {
-
             0xE0: self.clear_screen,
             0xEE: self.return_from_subroutine,
             0xFB: self.screen_scroll_right,
@@ -92,7 +95,60 @@ class CPU:
             0xA1: self.skip_if_key_is_not_pressed
         }
 
-    def execute_opcode(self) -> None:
+        self.leading_f_opcodes_lookup = {
+            0x07: self.move_delay_to_register,
+            0x0A: self.wait_for_keypress,
+            0x15: self.move_register_to_delay_timer,
+            0x18: self.move_register_to_sound_timer,
+            0x1E: self.add_register_to_index,
+            0x29: self.move_sprite_address_to_index,
+            0x30: self.move_extended_sprite_address_to_index,
+            0x33: self.store_bcd_in_memory,
+            0x55: self.store_registers_in_memory,
+            0x65: self.read_registers_from_memory
+        }
+
+    def reset(self):
+        """
+        Resets the CPU by reseting all registers and timers to its starting values
+        """
+        self.v = bytearray(Config.NUMBER_OF_REGISTERS)
+        self.pc = Config.PROGRAM_COUNTER
+        self.sp = Config.STACK_POINTER
+        self.i = 0
+        self.timer_dt = 0
+        self.timer_st = 0
+
+    def decrement_values_in_timers(self):
+        """
+        Subtracts one from timers if values stored in them are bigger than zero
+        """
+
+        if self.timer_st > 0:
+            self.timer_st -= 1
+
+        if self.timer_dt > 0:
+            self.timer_dt -= 1
+
+    def load_rom(self, rom_filename: str, address: int = Config.PROGRAM_COUNTER):
+        """"
+        Loads the rom data to emulator memory
+
+        :param rom_filename: path to rom file
+        :param address: address at which the rom data will begin to be stored in emulator memory
+        """
+        rom_data = open(rom_filename, 'rb').read()
+        for index, data in enumerate(rom_data):
+            self.memory[address + index] = data
+
+    def execute_opcode(self):
+        """"
+        This method is used to execute next instruction, which opcode is stored in memory at locations PC and PC+1
+        Opcodes are two byte wide, but CHIP8 memory consist of 1 byte memory cells and that`s why we need two
+        consecutive memory cells. Opcodes can be distinguished by only four oldest bits (in most cases)
+
+        :throws UnknownInstructionException: when there was no opcode defined in opcode lookup dictionaries
+        """
         # Get next opcode from memory, opcode is 2 byte so we need two consecutive memory cells
         self.opcode = (self.memory[self.pc] << 8) | self.memory[self.pc + 1]
         self.pc += 2
@@ -105,6 +161,9 @@ class CPU:
             raise self.UnknownInstructionException(self.opcode)
 
     def execute_leading_zero_opcodes(self):
+        """"
+        This method is used to execute instructions, which opcodes hex representation start with 0
+        """
         # To remove redundant scroll down and up methods we check if there is C or B on second youngest digit in opcode
         operation = self.opcode & 0x00F0
         if operation == 0x00B0:
@@ -118,10 +177,18 @@ class CPU:
         self.leading_zero_opcodes_lookup[operation]()
 
     def execute_leading_eight_opcodes(self):
+        """"
+        This method is used to execute instructions, which opcodes hex representation start with 8,
+        Those instructions are distinguished by four youngest bits
+        """
         operation = self.opcode & 0x000F
         self.leading_eight_opcodes_lookup[operation]()
 
     def execute_leading_e_opcodes(self):
+        """"
+        This method is used to execute instructions, which opcodes hex representation start with E,
+        Those instructions are distinguished by eight youngest bits
+        """
         operation = self.opcode & 0x00FF
         self.leading_e_opcodes_lookup[operation]()
 
@@ -131,6 +198,8 @@ class CPU:
         Mnemonic: SCU N
 
         Scrolls screen up n lines ( n/2 if not in extended mode )
+
+        :param number_of_lines: number of lines to scroll screen up
         """
         self.screen.scroll_up(number_of_lines)
 
@@ -140,6 +209,7 @@ class CPU:
         Mnemonic: SCD N
 
         Scrolls screen down n lines ( n/2 if not in extended mode )
+        :param number_of_lines: number of lines to scroll screen down
         """
         self.screen.scroll_down(number_of_lines)
 
@@ -484,13 +554,13 @@ class CPU:
         self.v[x] = (self.opcode & 0x00FF) & randint(0, 255)
 
     def draw_sprite(self):
-        # TODO draw_sprite
         """"
         Opcode: 0xDXYN
         Mnemonic: DRW VX, VY, N
 
-        Draws a sprite at coordinate (VX, VY) that has width of 8 pixels (1 byte) and height of N pixels.
-        Each horizontal line is read from memory location pointed in I register plus number of line
+        Draws a sprite at coordinate (VX, VY) that has width of 8 pixels (16 pixels in extended mode)
+        and height of N pixels. Each horizontal line is read from memory
+        location pointed in I register plus number of line
         """
         x = (self.opcode & 0x0F00) >> 8
         y = (self.opcode & 0x00F0) >> 4
@@ -551,3 +621,139 @@ class CPU:
         pressed_keys = key.get_pressed()
         if not pressed_keys[Config.KEY_MAPPING[key_in_vx]]:
             self.pc += 2
+
+    def move_delay_to_register(self):
+        """"
+        Opcode: 0xFX07
+        Mnemonic: LD Vx, DT
+
+        Sets value in register Vx to value from delay timer
+        x is stored in bits 8-11 of opcode
+        """
+        x = (self.opcode & 0x0F00) >> 8
+        self.v[x] = self.timer_dt
+
+    def wait_for_keypress(self):
+        """"
+        Opcode: 0xFX0A
+        Mnemonic: LD Vx, K
+
+        All execution stops until key is pressed, then the value of that key is stored in Vx
+        x is stored in bits 8-11 of opcode
+        """
+        x = (self.opcode & 0x0F00) >> 8
+
+        key_pressed = False
+        while not key_pressed:
+            event = pygame.event.wait()
+            if event.type == KEYDOWN:
+                pressed_keys = key.get_pressed()
+
+                for key_address, key_value in Config.KEY_MAPPING.items():
+                    if pressed_keys[key_value]:
+                        self.v[x] = key_address
+                        key_pressed = True
+                        break
+
+    def move_register_to_delay_timer(self):
+        """"
+        Opcode: 0xFX15
+        Mnemonic: LD DT, Vx
+
+        Sets value in delay timer to value from register Vx
+        x is stored in bits 8-11 of opcode
+        """
+        x = (self.opcode & 0x0F00) >> 8
+        self.timer_dt = self.v[x]
+
+    def move_register_to_sound_timer(self):
+        """"
+        Opcode: 0xFX18
+        Mnemonic: LD ST, Vx
+
+        Sets value in sound timer to value from register Vx
+        x is stored in bits 8-11 of opcode
+        """
+        x = (self.opcode & 0x0F00) >> 8
+        self.timer_st = self.v[x]
+
+    def add_register_to_index(self):
+        """"
+        Opcode: 0xFX1E
+        Mnemonic: ADD I, Vx
+
+        Sets value in index register I to sum of values in registers Vx and I
+        x is stored in bits 8-11 of opcode
+        """
+        x = (self.opcode & 0x0F00) >> 8
+        self.i += self.v[x]
+
+    def move_sprite_address_to_index(self):
+        """"
+        Opcode: 0xFX29
+        Mnemonic: LD F, Vx
+
+        Sets value in index register I to address of the sprite for hex character specified in Vx.
+        Each character 0-F is represented as 5 bytes so to get specific character address we need to multiply
+        value stored in Vx by 5
+        x is stored in bits 8-11 of opcode
+        """
+        x = (self.opcode & 0x0F00) >> 8
+        self.i = self.v[x] * 5
+
+    def move_extended_sprite_address_to_index(self):
+        """"
+        Opcode: 0xFX30
+        Mnemonic: LDH F, Vx
+
+        Sets value in index register I to address of the sprite for decimal character specified in Vx.
+        Each character is represented as 10 bytes so to get specific character address we need to multiply
+        value stored in Vx by 10
+        x is stored in bits 8-11 of opcode
+        """
+        x = (self.opcode & 0x0F00) >> 8
+        self.i = self.v[x] * 10
+
+    def store_bcd_in_memory(self):
+        """"
+        Opcode: 0xFX33
+        Mnemonic: LD B, Vx
+
+        Stores BCD representation of value in register Vx in memory. Hundreds are stored at addres pointed to in I,
+        tens are stored at I + 1 and ones are stored at addres I+2
+        x is stored in bits 8-11 of opcode
+        """
+        x = (self.opcode & 0x0F00) >> 8
+        value = str(self.v[x]).zfill(3)
+
+        self.memory[self.i] = int(value[0])
+        self.memory[self.i + 1] = int(value[1])
+        self.memory[self.i + 2] = int(value[2])
+
+    def store_registers_in_memory(self):
+        """"
+        Opcode: 0xFX55
+        Mnemonic: LD [I], Vx
+
+        Stores registers V0 - VX in memory starting at position pointed to in index register i, every consecutive
+        register is stored in next memory cell
+        x is stored in bits 8-11 of opcode
+        """
+        x = (self.opcode & 0x0F00) >> 8
+
+        for i in range(x + 1):
+            self.memory[self.i + i] = self.v[i]
+
+    def read_registers_from_memory(self):
+        """"
+        Opcode: 0xFX65
+        Mnemonic: LD Vx, [I]
+
+        Sets values in registers V0 - VX with values stored in memory starting at position pointed to in index register,
+        every consecutive value is stored in next memory cell
+        x is stored in bits 8-11 of opcode
+        """
+        x = (self.opcode & 0x0F00) >> 8
+
+        for i in range(x + 1):
+            self.v[i] = self.memory[self.i + i]
