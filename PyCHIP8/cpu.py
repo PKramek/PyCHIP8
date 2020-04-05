@@ -1,5 +1,7 @@
 from random import randint
 
+from pygame import key
+
 from PyCHIP8.conf import Config
 from PyCHIP8.conf import Constants
 from PyCHIP8.screen import Screen
@@ -17,6 +19,10 @@ class CPU:
         - 1 8-bit delay timer - DT
         - 1 8-bit sound timer - ST
     """
+
+    class UnknownInstructionException(Exception):
+        def __init__(self, opcode):
+            Exception.__init__(self, "Unkown instruction {}".format(opcode))
 
     def __init__(self, screen: Screen):
         """
@@ -54,6 +60,7 @@ class CPU:
             0xB: self.jump_to_address_plus_v_zero,
             0xC: self.generate_random_number,
             0xD: self.draw_sprite,
+            0xE: self.execute_leading_e_opcodes,
 
         }
 
@@ -78,7 +85,11 @@ class CPU:
             0x6: self.shift_register_right,
             0x7: self.negative_subtract_register_from_register,
             0xE: self.shift_register_left
+        }
 
+        self.leading_e_opcodes_lookup = {
+            0x9E: self.skip_if_key_is_pressed,
+            0xA1: self.skip_if_key_is_not_pressed
         }
 
     def execute_opcode(self) -> None:
@@ -88,7 +99,10 @@ class CPU:
 
         four_oldest_bits = (self.opcode & 0xF000) >> 12
 
-        self.opcode_lookup[four_oldest_bits]()
+        try:
+            self.opcode_lookup[four_oldest_bits]()
+        except KeyError:
+            raise self.UnknownInstructionException(self.opcode)
 
     def execute_leading_zero_opcodes(self):
         # To remove redundant scroll down and up methods we check if there is C or B on second youngest digit in opcode
@@ -106,6 +120,10 @@ class CPU:
     def execute_leading_eight_opcodes(self):
         operation = self.opcode & 0x000F
         self.leading_eight_opcodes_lookup[operation]()
+
+    def execute_leading_e_opcodes(self):
+        operation = self.opcode & 0x00FF
+        self.leading_e_opcodes_lookup[operation]()
 
     def screen_scroll_up(self, number_of_lines: int):
         """"
@@ -471,11 +489,65 @@ class CPU:
         Opcode: 0xDXYN
         Mnemonic: DRW VX, VY, N
 
-        Display
+        Draws a sprite at coordinate (VX, VY) that has width of 8 pixels (1 byte) and height of N pixels.
+        Each horizontal line is read from memory location pointed in I register plus number of line
         """
+        x = (self.opcode & 0x0F00) >> 8
+        y = (self.opcode & 0x00F0) >> 4
+        n = (self.opcode & 0x000F)
 
-    def draw_in_extended_screen(self):
-        pass
+        self.v[0xF] = 0
 
-    def draw_in_normal_screen(self):
-        pass
+        num_of_bytes = 1
+        if self.mode == Constants.EXTENDED_MODE:
+            num_of_bytes = 2
+
+        for horizontal_line_num in range(n):
+
+            for b in range(num_of_bytes):
+
+                # Byte describing pixels is encoded as int but we need binary representation of that number
+                pixels = bin(self.memory[self.i + horizontal_line_num + b])[2:].zfill(8)
+                # In CHIP-8 when sprite does not fit on screen we draw the rest of it on the opposite side of screen
+                y_pos = (y + horizontal_line_num) % self.screen.height
+
+                for vertical_line_num in range(8):
+
+                    x_pos = (x + vertical_line_num + b * 8) % self.screen.width
+                    pixel = int(pixels[x_pos])
+                    current_pixel = self.screen.get_pixel_value(x_pos, y_pos)
+
+                    if pixel == current_pixel:
+                        self.v[0xF] = 1
+
+                    self.screen.draw_pixel(x_pos, y_pos, pixel)
+
+        self.screen.refresh()
+
+    def skip_if_key_is_pressed(self):
+        """"
+        Opcode: 0xEX9E
+        Mnemonic: SKP Vx
+
+        Skips next instruction if key specified in register Vx is pressed
+        x is stored in bits 8-11 of opcode
+        """
+        x = (self.opcode & 0x0F00) >> 8
+        key_in_vx = self.v[x]
+        pressed_keys = key.get_pressed()
+        if pressed_keys[Config.KEY_MAPPING[key_in_vx]]:
+            self.pc += 2
+
+    def skip_if_key_is_not_pressed(self):
+        """"
+        Opcode: 0xEXA1
+        Mnemonic: SKNP Vx
+
+        Skips next instruction if key specified in register Vx is pressed
+        x is stored in bits 8-11 of opcode
+        """
+        x = (self.opcode & 0x0F00) >> 8
+        key_in_vx = self.v[x]
+        pressed_keys = key.get_pressed()
+        if not pressed_keys[Config.KEY_MAPPING[key_in_vx]]:
+            self.pc += 2

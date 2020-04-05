@@ -2,6 +2,29 @@ from PyCHIP8.conf import Constants
 
 
 class Screen:
+    def __init__(self):
+        self._width = None
+        self._height = None
+
+    @property
+    def height(self):
+        return self._height
+
+    @height.setter
+    def height(self, height):
+        self._height = height
+
+    @property
+    def width(self):
+        return self._height
+
+    @width.setter
+    def width(self, width):
+        self._width = width
+
+    def refresh(self):
+        pass
+
     def scroll_down(self, number_of_lines: int):
         # TODO Implement scroll_down
         pass
@@ -32,4 +55,11 @@ class Screen:
 
     def enable_extended_screen(self):
         # TODO Implement enable_extended_screen
+        pass
+
+    def get_pixel_value(self, x_pos: int, y_pos: int):
+        # TODO Implement get_pixel_value
+        pass
+
+    def draw_pixel(self, x_pos: int, y_pos: int, pixel: int):
         pass
