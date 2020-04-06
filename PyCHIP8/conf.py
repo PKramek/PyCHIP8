@@ -7,6 +7,14 @@ class Config:
     PROGRAM_COUNTER = 0x200
     NUMBER_OF_REGISTERS = 0x10
 
+    SCREEN_WIDTH_NORMAL = 64
+    SCREEN_HEIGHT_NORMAL = 32
+
+    SCREEN_WIDTH_EXTENDED = 128
+    SCREEN_HEIGHT_EXTENDED = 64
+
+
+
     KEY_MAPPING = {
         0x0: pygame.K_1,
         0x1: pygame.K_2,
@@ -25,6 +33,7 @@ class Config:
         0xE: pygame.K_c,
         0xF: pygame.K_v,
     }
+
 
 class Constants:
     NORMAL_MODE = 'NORMAL'
