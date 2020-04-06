@@ -2,6 +2,7 @@ import pygame
 
 
 class Config:
+
     STACK_POINTER = 0x52
     MAX_MEMORY = 4096
     PROGRAM_COUNTER = 0x200
@@ -13,7 +14,11 @@ class Config:
     SCREEN_WIDTH_EXTENDED = 128
     SCREEN_HEIGHT_EXTENDED = 64
 
+    # Colors in RGBA format
+    SCREEN_COLORS = [(0, 0, 0, 255), (65, 255, 0, 255)]
 
+    CPU_CLOCK_SPEED = 500  # in HZ
+    TIMER_DELAY = 20  # in ms
 
     KEY_MAPPING = {
         0x0: pygame.K_1,

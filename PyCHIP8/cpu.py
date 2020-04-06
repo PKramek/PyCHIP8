@@ -1,3 +1,4 @@
+import logging
 from random import randint
 
 import pygame
@@ -6,6 +7,8 @@ from pygame import key, KEYDOWN
 from PyCHIP8.conf import Config
 from PyCHIP8.conf import Constants
 from PyCHIP8.screen import Screen
+
+logging.basicConfig(level=logging.INFO)
 
 
 class CPU:
@@ -20,7 +23,7 @@ class CPU:
         """
 
         def __init__(self, opcode):
-            Exception.__init__(self, "Unknown instruction {}".format(opcode))
+            Exception.__init__(self, "Unknown instruction {}".format(hex(opcode)))
 
     def __init__(self, screen: Screen):
         """
@@ -44,7 +47,7 @@ class CPU:
 
         self.load_fontset()
 
-        self.running = False
+        self.running = True
 
         # Flag used to define if sound should be played
         self.sound_flag = True
@@ -67,7 +70,7 @@ class CPU:
             0xC: self.generate_random_number,
             0xD: self.draw_sprite,
             0xE: self.execute_leading_e_opcodes,
-
+            0xF: self.execute_leading_zero_opcodes
         }
 
         self.leading_zero_opcodes_lookup = {
@@ -109,6 +112,8 @@ class CPU:
             0x55: self.store_registers_in_memory,
             0x65: self.read_registers_from_memory
         }
+
+        self.reset()
 
     def reset(self):
         """
@@ -181,6 +186,8 @@ class CPU:
         self.opcode = (self.memory[self.pc] << 8) | self.memory[self.pc + 1]
         self.pc += 2
 
+        logging.info("{}".format(hex(self.opcode)))
+
         four_oldest_bits = (self.opcode & 0xF000) >> 12
 
         try:
@@ -219,6 +226,14 @@ class CPU:
         """
         operation = self.opcode & 0x00FF
         self.leading_e_opcodes_lookup[operation]()
+
+    def execute_leading_f_opcodes(self):
+        """"
+        This method is used to execute instructions, which opcodes hex representation start with F,
+        Those instructions are distinguished by eight youngest bits
+        """
+        operation = self.opcode & 0x00FF
+        self.leading_f_opcodes_lookup[operation]()
 
     def screen_scroll_up(self, number_of_lines: int):
         """"
@@ -590,8 +605,8 @@ class CPU:
         and height of N pixels. Each horizontal line is read from memory
         location pointed in I register plus number of line
         """
-        x = (self.opcode & 0x0F00) >> 8
-        y = (self.opcode & 0x00F0) >> 4
+        x = self.v[(self.opcode & 0x0F00) >> 8]
+        y = self.v[(self.opcode & 0x00F0) >> 4]
         n = (self.opcode & 0x000F)
 
         self.v[0xF] = 0
@@ -618,7 +633,7 @@ class CPU:
                     if pixel == current_pixel:
                         self.v[0xF] = 1
 
-                    self.screen.draw_pixel(x_pos, y_pos, pixel)
+                    self.screen.draw_pixel(x_pos, y_pos, Config.SCREEN_COLORS[pixel])
 
         self.screen.refresh()
 
