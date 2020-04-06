@@ -8,7 +8,7 @@ from PyCHIP8.conf import Config
 from PyCHIP8.conf import Constants
 from PyCHIP8.screen import Screen
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 
 class CPU:
@@ -70,7 +70,7 @@ class CPU:
             0xC: self.generate_random_number,
             0xD: self.draw_sprite,
             0xE: self.execute_leading_e_opcodes,
-            0xF: self.execute_leading_zero_opcodes
+            0xF: self.execute_leading_f_opcodes
         }
 
         self.leading_zero_opcodes_lookup = {
@@ -403,7 +403,7 @@ class CPU:
         x is stored in bits 8-11 of opcode
         """
         x = (self.opcode & 0x0F00) >> 8
-        self.v[x] += (self.opcode & 0x00FF)
+        self.v[x] = (self.v[x] + (self.opcode & 0x00FF)) % 256
 
     def move_register_to_register(self):
         """"
@@ -492,7 +492,7 @@ class CPU:
         x = (self.opcode & 0x0F00) >> 8
         y = (self.opcode & 0x00F0) >> 4
 
-        if self.v[x] > self.v[y]:
+        if self.v[x] >= self.v[y]:
             self.v[x] -= self.v[y]
             self.v[0xF] = 1
         else:
@@ -605,8 +605,10 @@ class CPU:
         and height of N pixels. Each horizontal line is read from memory
         location pointed in I register plus number of line
         """
-        x = self.v[(self.opcode & 0x0F00) >> 8]
-        y = self.v[(self.opcode & 0x00F0) >> 4]
+        x = (self.opcode & 0x0F00) >> 8
+        vx = self.v[x]
+        y = (self.opcode & 0x00F0) >> 4
+        vy = self.v[y]
         n = (self.opcode & 0x000F)
 
         self.v[0xF] = 0
@@ -622,12 +624,12 @@ class CPU:
                 # Byte describing pixels is encoded as int but we need binary representation of that number
                 pixels = bin(self.memory[self.i + horizontal_line_num + b])[2:].zfill(8)
                 # In CHIP-8 when sprite does not fit on screen we draw the rest of it on the opposite side of screen
-                y_pos = (y + horizontal_line_num) % self.screen.height
+                y_pos = (vy + horizontal_line_num) % self.screen.height
 
                 for vertical_line_num in range(8):
 
-                    x_pos = (x + vertical_line_num + b * 8) % self.screen.width
-                    pixel = int(pixels[x_pos])
+                    x_pos = (vx + vertical_line_num + b * 8) % self.screen.width
+                    pixel = int(pixels[vertical_line_num])
                     current_pixel = self.screen.get_pixel_value(x_pos, y_pos)
 
                     if pixel == current_pixel:
