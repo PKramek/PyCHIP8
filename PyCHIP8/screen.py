@@ -1,11 +1,10 @@
-import logging
 from typing import Tuple
 
 from pygame import display, draw
 from pygame.constants import HWSURFACE, DOUBLEBUF
 
 from PyCHIP8.conf import Constants, Config
-
+import numpy as np
 
 class Screen:
     """
@@ -28,6 +27,9 @@ class Screen:
         self.set_according_screen_size()
         self.surface = display.set_mode((self.width * self.scale, self.height * self.scale), HWSURFACE | DOUBLEBUF, 8)
         self.clear()
+
+
+
 
     @property
     def mode(self):
@@ -66,7 +68,6 @@ class Screen:
 
     def clear(self):
         self.surface.fill(Config.SCREEN_COLORS[0])
-        self.refresh()
 
     def scroll_down(self, number_of_lines: int):
         """
@@ -91,7 +92,6 @@ class Screen:
                     Config.SCREEN_COLORS[0]
                 )
 
-        self.refresh()
 
     def scroll_up(self, number_of_lines):
         """
@@ -116,7 +116,6 @@ class Screen:
                     Config.SCREEN_COLORS[0]
                 )
 
-        self.refresh()
 
     def scroll_right(self):
         """
@@ -140,7 +139,6 @@ class Screen:
                     Config.SCREEN_COLORS[0]
                 )
 
-        self.refresh()
 
     def scroll_left(self):
         """
@@ -164,7 +162,6 @@ class Screen:
                     Config.SCREEN_COLORS[0]
                 )
 
-        self.refresh()
 
     def disable_extended_screen(self):
         self.mode = Constants.NORMAL_MODE
@@ -176,7 +173,6 @@ class Screen:
 
     def get_pixel(self, x: int, y: int) -> Tuple[int, int, int, int]:
         color = self.surface.get_at((x * self.scale, y * self.scale))
-        logging.debug("x:{} y:{} color:{}".format(x, y, color))
         return color
 
     def draw_pixel(self, x: int, y: int, pixel: Tuple[int, int, int, int]):
@@ -186,8 +182,6 @@ class Screen:
 
     def get_pixel_value(self, x, y) -> int:
         pixel = self.get_pixel(x, y)
-        logging.info("index:{} {}".format(pixel, Config.SCREEN_COLORS))
         if pixel == Config.SCREEN_COLORS[0]:
             return 0
         return 1
-
