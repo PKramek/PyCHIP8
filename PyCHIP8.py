@@ -1,3 +1,5 @@
+import logging
+
 import pygame
 
 from PyCHIP8.conf import Config
@@ -14,7 +16,9 @@ class PyCHIP8:
 
         pygame.time.set_timer(pygame.USEREVENT, Config.TIMER_DELAY)
         single_instruction_interval = (1000 // Config.CPU_CLOCK_SPEED)
-        self.cpu.load_rom("ROMS\IBM.ch8")
+        logging.debug("Single CPU cycle interval: {}".format(single_instruction_interval))
+
+        self.cpu.load_rom("ROMS\TETRIS")
         while self.cpu.running:
 
             pygame.time.wait(single_instruction_interval)
@@ -26,6 +30,8 @@ class PyCHIP8:
                 if event.type == pygame.USEREVENT:
                     self.cpu.decrement_values_in_timers()
 
+
+            self.screen.refresh()
 
 if __name__ == "__main__":
     emulator = PyCHIP8()
