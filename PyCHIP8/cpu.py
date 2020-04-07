@@ -8,7 +8,7 @@ from PyCHIP8.conf import Config
 from PyCHIP8.conf import Constants
 from PyCHIP8.screen import Screen
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 
 class CPU:
@@ -40,12 +40,10 @@ class CPU:
         self.pc = 0
         self.sp = 0
         self.i = 0
-        self.v = []
+        self.v = bytearray(Config.NUMBER_OF_REGISTERS)
 
         self.timer_dt = 0
         self.timer_st = 0
-
-        self.load_fontset()
 
         self.running = True
 
@@ -125,6 +123,8 @@ class CPU:
         self.i = 0
         self.timer_dt = 0
         self.timer_st = 0
+        self.memory = bytearray(Config.MAX_MEMORY)
+        self.load_fontset()
 
     def decrement_values_in_timers(self):
         """
@@ -183,10 +183,11 @@ class CPU:
         :throws UnknownInstructionException: when there was no opcode defined in opcode lookup dictionaries
         """
         # Get next opcode from memory, opcode is 2 byte so we need two consecutive memory cells
-        self.opcode = (self.memory[self.pc] << 8) | self.memory[self.pc + 1]
-        self.pc += 2
+        self.opcode = (int(self.memory[self.pc]) << 8) + int(self.memory[self.pc + 1])
 
-        logging.info("{}".format(hex(self.opcode)))
+        logging.info("sp: {} pc: {} executing opcode: 0x{}".format(self.sp, self.pc, hex(self.opcode)[2:].zfill(4)))
+
+        self.pc += 2
 
         four_oldest_bits = (self.opcode & 0xF000) >> 12
 
@@ -194,6 +195,8 @@ class CPU:
             self.opcode_lookup[four_oldest_bits]()
         except KeyError:
             raise self.UnknownInstructionException(self.opcode)
+
+
 
     def execute_leading_zero_opcodes(self):
         """"
@@ -339,9 +342,9 @@ class CPU:
         Saves current context ( value of PC ) in memory and sets PC to value defined in 12 youngest bits of Opcode
         """
         self.memory[self.sp] = self.pc & 0x00FF
-        self.pc += 1
+        self.sp += 1
         self.memory[self.sp] = (self.pc & 0xFF00) >> 8
-        self.pc += 1
+        self.sp += 1
 
         self.pc = self.opcode & 0x0FFF
 
@@ -471,7 +474,7 @@ class CPU:
 
         sum = self.v[x] + self.v[y]
 
-        if sum > 255:
+        if sum >= 255:
             self.v[x] = sum - 256
             self.v[0xF] = 1
         else:
@@ -630,14 +633,14 @@ class CPU:
 
                     x_pos = (vx + vertical_line_num + b * 8) % self.screen.width
                     pixel = int(pixels[vertical_line_num])
-                    current_pixel = self.screen.get_pixel_value(x_pos, y_pos)
+                    current_pixel = int(self.screen.get_pixel_value(x_pos, y_pos))
 
                     if pixel == current_pixel:
                         self.v[0xF] = 1
 
-                    self.screen.draw_pixel(x_pos, y_pos, Config.SCREEN_COLORS[pixel])
+                    pixel ^= current_pixel
 
-        self.screen.refresh()
+                    self.screen.draw_pixel(x_pos, y_pos, Config.SCREEN_COLORS[pixel])
 
     def skip_if_key_is_pressed(self):
         """"
