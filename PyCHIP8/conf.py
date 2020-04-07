@@ -18,7 +18,7 @@ class Config:
     SCREEN_COLORS = [(0, 0, 0, 255), (65, 255, 0, 255)]
 
     CPU_CLOCK_SPEED = 500  # in HZ
-    TIMER_DELAY = 20  # in ms
+    TIMER_DELAY = 2  # in ms
 
     KEY_MAPPING = {
         0x0: pygame.K_1,

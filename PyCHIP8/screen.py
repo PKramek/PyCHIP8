@@ -1,10 +1,9 @@
-from typing import Tuple
-
+import numpy as np
 from pygame import display, draw
 from pygame.constants import HWSURFACE, DOUBLEBUF
 
 from PyCHIP8.conf import Constants, Config
-import numpy as np
+
 
 class Screen:
     """
@@ -19,17 +18,14 @@ class Screen:
         :param scale: Defines screen size multiplier, this parameter is used to define displayed screen size in relation
                         to original CHIP-8 screen size, defaults to 10
         """
-
         self.mode = mode
+        self.set_according_screen_size()
+
         self.scale = scale
         display.init()
 
-        self.set_according_screen_size()
         self.surface = display.set_mode((self.width * self.scale, self.height * self.scale), HWSURFACE | DOUBLEBUF, 8)
         self.clear()
-
-
-
 
     @property
     def mode(self):
@@ -67,6 +63,7 @@ class Screen:
         display.flip()
 
     def clear(self):
+        self.bitmap = np.zeros((self.width, self.height), dtype="int8")
         self.surface.fill(Config.SCREEN_COLORS[0])
 
     def scroll_down(self, number_of_lines: int):
@@ -74,114 +71,51 @@ class Screen:
         Moves every line down by a number defined in number_of_lines parameter
         :param number_of_lines: Defines number of lines each line should be moved down
         """
-        for y in range(self.height - number_of_lines, number_of_lines, -1):
-            for x in range(self.width):
-                pixel_color = self.get_pixel(x, y)
-                self.draw_pixel(
-                    x,
-                    y + number_of_lines,
-                    pixel_color
-                )
-
-        # Fill remaining lines with color zero
-        for y in range(number_of_lines):
-            for x in range(self.width):
-                self.draw_pixel(
-                    x,
-                    y + number_of_lines,
-                    Config.SCREEN_COLORS[0]
-                )
-
+        self.bitmap = np.roll(self.bitmap, number_of_lines, axis=0)
+        self.bitmap[:number_of_lines, :] = 0
 
     def scroll_up(self, number_of_lines):
         """
         Moves every line up by a number defined in number_of_lines parameter
         :param number_of_lines: Defines number of lines each line should be moved up
         """
-        for y in range(number_of_lines, self.height):
-            for x in range(self.width):
-                pixel_color = self.get_pixel(x, y)
-                self.draw_pixel(
-                    x,
-                    y - number_of_lines,
-                    pixel_color
-                )
-
-        # Fill remaining lines with color zero
-        for y in range(self.height - number_of_lines, self.height):
-            for x in range(self.width):
-                self.draw_pixel(
-                    x,
-                    y + number_of_lines,
-                    Config.SCREEN_COLORS[0]
-                )
-
+        height = self.bitmap.shape[0]
+        self.bitmap = np.roll(self.bitmap, -number_of_lines, axis=0)
+        self.bitmap[height - number_of_lines:, :] = 0
 
     def scroll_right(self):
         """
         Moves every vertical line right by 4
         """
-        for y in range(self.height):
-            for x in range(self.width - 4, -1, -1):
-                pixel_color = self.get_pixel(x, y)
-                self.draw_pixel(
-                    x + 4,
-                    y,
-                    pixel_color
-                )
-
-        # Fill remaining lines with color zero
-        for y in range(self.height):
-            for x in range(4):
-                self.draw_pixel(
-                    x,
-                    y,
-                    Config.SCREEN_COLORS[0]
-                )
-
+        self.bitmap = np.roll(self.bitmap, 4, axis=1)
+        self.bitmap[:, :4] = 0
 
     def scroll_left(self):
         """
         Moves every vertical line left by 4
         """
-        for y in range(self.height):
-            for x in range(4, self.width):
-                pixel_color = self.get_pixel(x, y)
-                self.draw_pixel(
-                    x - 4,
-                    y,
-                    pixel_color
-                )
-
-        # Fill remaining lines with color zero
-        for y in range(self.height):
-            for x in range(self.width - 4, self.width):
-                self.draw_pixel(
-                    x,
-                    y,
-                    Config.SCREEN_COLORS[0]
-                )
-
+        width = self.bitmap.shape[1]
+        self.bitmap = np.roll(self.bitmap, -4, axis=1)
+        self.bitmap[:, width - 4:] = 0
 
     def disable_extended_screen(self):
         self.mode = Constants.NORMAL_MODE
         self.set_according_screen_size()
+        self.clear()
 
     def enable_extended_screen(self):
         self.mode = Constants.EXTENDED_MODE
         self.set_according_screen_size()
+        self.clear()
 
-    def get_pixel(self, x: int, y: int) -> Tuple[int, int, int, int]:
-        color = self.surface.get_at((x * self.scale, y * self.scale))
-        return color
+    def get_pixel(self, x: int, y: int) -> int:
+        return self.bitmap[x, y]
 
-    def draw_pixel(self, x: int, y: int, pixel: Tuple[int, int, int, int]):
-        width = height = self.scale
-        draw.rect(self.surface, pixel,
-                  (x * self.scale, y * self.scale, width, height))
+    def draw_pixel(self, x: int, y: int, pixel: int):
+        draw.rect(self.surface, Config.SCREEN_COLORS[pixel],
+                  (x * self.scale, y * self.scale, self.scale, self.scale))
 
-    def get_pixel_value(self, x, y) -> int:
-        pixel = self.get_pixel(x, y)
-        if pixel == Config.SCREEN_COLORS[0]:
-            return 0
-        return 1
+    def xor_pixel_value(self, x, y, pixel: int):
+        self.bitmap[x, y] ^= pixel
+
+        return self.bitmap[x, y]

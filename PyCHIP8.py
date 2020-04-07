@@ -6,6 +6,7 @@ from PyCHIP8.conf import Config
 from PyCHIP8.cpu import CPU
 from PyCHIP8.screen import Screen
 
+logging.basicConfig(level=logging.WARNING)
 
 class PyCHIP8:
     def __init__(self):
@@ -17,8 +18,9 @@ class PyCHIP8:
         pygame.time.set_timer(pygame.USEREVENT, Config.TIMER_DELAY)
         single_instruction_interval = (1000 // Config.CPU_CLOCK_SPEED)
         logging.debug("Single CPU cycle interval: {}".format(single_instruction_interval))
+        pygame.display.set_caption("PyCHIP8 by Piotr Kramek")
 
-        self.cpu.load_rom("ROMS\TETRIS")
+        self.cpu.load_rom("ROMS\Breakout.ch8")
         while self.cpu.running:
 
             pygame.time.wait(single_instruction_interval)

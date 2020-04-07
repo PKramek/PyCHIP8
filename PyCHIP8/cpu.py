@@ -8,8 +8,6 @@ from PyCHIP8.conf import Config
 from PyCHIP8.conf import Constants
 from PyCHIP8.screen import Screen
 
-logging.basicConfig(level=logging.INFO)
-
 
 class CPU:
     """"
@@ -195,8 +193,6 @@ class CPU:
             self.opcode_lookup[four_oldest_bits]()
         except KeyError:
             raise self.UnknownInstructionException(self.opcode)
-
-
 
     def execute_leading_zero_opcodes(self):
         """"
@@ -633,14 +629,14 @@ class CPU:
 
                     x_pos = (vx + vertical_line_num + b * 8) % self.screen.width
                     pixel = int(pixels[vertical_line_num])
-                    current_pixel = int(self.screen.get_pixel_value(x_pos, y_pos))
+                    current_pixel = int(self.screen.get_pixel(x_pos, y_pos))
 
                     if pixel == current_pixel:
                         self.v[0xF] = 1
 
-                    pixel ^= current_pixel
+                    pixel = self.screen.xor_pixel_value(x_pos, y_pos, pixel)
 
-                    self.screen.draw_pixel(x_pos, y_pos, Config.SCREEN_COLORS[pixel])
+                    self.screen.draw_pixel(x_pos, y_pos, pixel)
 
     def skip_if_key_is_pressed(self):
         """"
