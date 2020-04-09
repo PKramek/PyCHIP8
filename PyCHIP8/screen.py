@@ -1,6 +1,6 @@
 import numpy as np
+import pygame
 from pygame import display, draw
-from pygame.constants import HWSURFACE, DOUBLEBUF
 
 from PyCHIP8.conf import Constants, Config
 
@@ -24,7 +24,7 @@ class Screen:
         self.scale = scale
         display.init()
 
-        self.surface = display.set_mode((self.width * self.scale, self.height * self.scale), HWSURFACE | DOUBLEBUF, 8)
+        self.surface = display.set_mode((self.width * self.scale, self.height * self.scale), depth=8)
         self.clear()
 
     @property
@@ -56,7 +56,8 @@ class Screen:
             self.width = Config.SCREEN_WIDTH_EXTENDED
             self.height = Config.SCREEN_HEIGHT_EXTENDED
 
-    def refresh(self):
+    @staticmethod
+    def refresh():
         """
         Refresh image displayed on screen
         """
@@ -119,3 +120,11 @@ class Screen:
         self.bitmap[x, y] ^= pixel
 
         return self.bitmap[x, y]
+
+    def draw_frame(self):
+        """This method is not used, it was only for testing purposes"""
+        # scaled_bitmap = np.kron(self.bitmap, (self.scale,self.scale))
+        scaled_bitmap = np.repeat(np.repeat(self.bitmap, self.scale, axis=1), self.scale, axis=0)
+
+        surface = pygame.surfarray.make_surface(scaled_bitmap)
+        self.surface.blit(surface, (0, 0))
