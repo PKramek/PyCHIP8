@@ -24,8 +24,8 @@ class PyCHIP8:
         self.cpu.load_rom("ROMS\Breakout.ch8")
         while self.cpu.running:
             pygame.time.wait(single_instruction_interval)
-            self.cpu.execute_opcode()
 
+            self.cpu.execute_opcode()
             self.screen.refresh()
 
             for event in pygame.event.get():
