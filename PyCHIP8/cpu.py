@@ -662,12 +662,12 @@ class CPU:
 
             y_position = (vy + y_offset) % self.screen.height
 
-            for x_offset, bit in enumerate(format(sprite, '08b')):
+            for x_offset, bit in enumerate(bin(sprite)[2:].zfill(8)):
                 x_position = (vx + x_offset) % self.screen.width
 
                 current_pixel = self.screen.get_pixel(x_position, y_position)
 
-                if int(bit) == 1 and current_pixel == 1:
+                if int(bit) == current_pixel == 1:
                     self.v[0xF] = 1
                 pixel_value = self.screen.xor_pixel_value(x_position, y_position, int(bit))
                 self.screen.draw_pixel(x_position, y_position, pixel_value)
