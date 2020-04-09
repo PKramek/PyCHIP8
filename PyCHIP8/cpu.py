@@ -648,7 +648,7 @@ class CPU:
         and height of N pixels. Each horizontal line is read from memory
         location pointed in I register plus number of line
         """
-
+        # TODO add extended mode support
         x = (self.opcode & 0x0F00) >> 8
         vx = self.v[x]
         y = (self.opcode & 0x00F0) >> 4
