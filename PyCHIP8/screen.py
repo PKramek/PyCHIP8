@@ -116,13 +116,13 @@ class Screen:
         draw.rect(self.surface, Config.SCREEN_COLORS[pixel],
                   (x * self.scale, y * self.scale, self.scale, self.scale))
 
-    def xor_pixel_value(self, x, y, pixel: int):
+    def xor_pixel_value(self, x, y, pixel: int) -> int:
         self.bitmap[x, y] ^= pixel
 
         return self.bitmap[x, y]
 
     def draw_frame(self):
-        """This method is not used, it was only for testing purposes"""
+        """This method is not used, it was only used for testing purposes"""
         # scaled_bitmap = np.kron(self.bitmap, (self.scale,self.scale))
         scaled_bitmap = np.repeat(np.repeat(self.bitmap, self.scale, axis=1), self.scale, axis=0)
 

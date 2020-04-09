@@ -594,7 +594,7 @@ class CPU:
         random_int = randint(0, 255)
         self.v[x] = (self.opcode & 0x00FF) & random_int
 
-    def draw_sprite(self):
+    def draw_sprite_v1(self):
         """"
         Opcode: 0xDXYN
         Mnemonic: DRW VX, VY, N
@@ -602,7 +602,10 @@ class CPU:
         Draws a sprite at coordinate (VX, VY) that has width of 8 pixels (16 pixels in extended mode)
         and height of N pixels. Each horizontal line is read from memory
         location pointed in I register plus number of line
+
+        This method was causing weird screen behavior
         """
+        # TODO Fix this method
         x = (self.opcode & 0x0F00) >> 8
         vx = self.v[x]
         y = (self.opcode & 0x00F0) >> 4
@@ -635,6 +638,39 @@ class CPU:
 
                     pixel = self.screen.xor_pixel_value(x_pos, y_pos, pixel)
                     self.screen.draw_pixel(x_pos, y_pos, pixel)
+
+    def draw_sprite(self):
+        """"
+        Opcode: 0xDXYN
+        Mnemonic: DRW VX, VY, N
+
+        Draws a sprite at coordinate (VX, VY) that has width of 8 pixels (16 pixels in extended mode)
+        and height of N pixels. Each horizontal line is read from memory
+        location pointed in I register plus number of line
+        """
+
+        x = (self.opcode & 0x0F00) >> 8
+        vx = self.v[x]
+        y = (self.opcode & 0x00F0) >> 4
+        vy = self.v[y]
+        n = (self.opcode & 0x000F)
+
+        self.v[0xF] = 0
+
+        for y_offset in range(n):
+            sprite = self.memory[self.i + y_offset]
+
+            y_position = (vy + y_offset) % self.screen.height
+
+            for x_offset, bit in enumerate(format(sprite, '08b')):
+                x_position = (vx + x_offset) % self.screen.width
+
+                current_pixel = self.screen.get_pixel(x_position, y_position)
+
+                if int(bit) == 1 and current_pixel == 1:
+                    self.v[0xF] = 1
+                pixel_value = self.screen.xor_pixel_value(x_position, y_position, int(bit))
+                self.screen.draw_pixel(x_position, y_position, pixel_value)
 
     def skip_if_key_is_pressed(self):
         """"
