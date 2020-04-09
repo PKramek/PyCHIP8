@@ -109,8 +109,6 @@ class CPU:
             0x65: self.read_registers_from_memory
         }
 
-        self.reset()
-
     def reset(self):
         """
         Resets the CPU by reseting all registers and timers to its starting values
@@ -142,9 +140,10 @@ class CPU:
         :param rom_filename: path to rom file
         :param address: address at which the rom data will begin to be stored in emulator memory
         """
-        rom_data = open(rom_filename, 'rb').read()
-        for index, data in enumerate(rom_data):
-            self.memory[address + index] = data
+        with open(rom_filename, 'rb') as opened_file:
+            rom_data = opened_file.read()
+            for index, data in enumerate(rom_data):
+                self.memory[address + index] = data
 
     def load_fontset(self):
         """
@@ -281,7 +280,7 @@ class CPU:
 
         Scrolls screen right 4 lines ( 2 if not in extended mode )
         """
-        self.screen.scroll_right(self.mode)
+        self.screen.scroll_right()
 
     def screen_scroll_left(self):
         """"
@@ -290,7 +289,7 @@ class CPU:
 
         Scrolls screen left 4 lines ( 2 if not in extended mode )
         """
-        self.screen.scroll_left(self.mode)
+        self.screen.scroll_left()
 
     def exit(self):
         """"
@@ -470,8 +469,8 @@ class CPU:
 
         sum = self.v[x] + self.v[y]
 
-        if sum >= 255:
-            self.v[x] = sum - 256
+        if sum >= 256:
+            self.v[x] = sum % 256
             self.v[0xF] = 1
         else:
             self.v[x] = sum
@@ -495,7 +494,7 @@ class CPU:
             self.v[x] -= self.v[y]
             self.v[0xF] = 1
         else:
-            self.v[x] -= self.v[y] - 256
+            self.v[x] = self.v[x] + 256 - self.v[y]
             self.v[0xF] = 0
 
     def shift_register_right(self):
@@ -528,7 +527,7 @@ class CPU:
         x = (self.opcode & 0x0F00) >> 8
         y = (self.opcode & 0x00F0) >> 4
 
-        if self.v[y] > self.v[x]:
+        if self.v[y] >= self.v[x]:
             self.v[x] = self.v[y] - self.v[x]
             self.v[0xF] = 1
         else:
@@ -549,7 +548,7 @@ class CPU:
         x = (self.opcode & 0x0F00) >> 8
 
         self.v[0xF] = (self.v[x] & 0x80) >> 8
-        self.v[x] = self.v[x] << 1
+        self.v[x] = (self.v[x] << 1) & 0xFF
 
     def skip_if_register_not_equal_other_register(self):
         """"
@@ -592,8 +591,8 @@ class CPU:
         value stored in 8 youngest bits of opcode
         """
         x = (self.opcode & 0x0F00) >> 8
-
-        self.v[x] = (self.opcode & 0x00FF) & randint(0, 255)
+        random_int = randint(0, 255)
+        self.v[x] = (self.opcode & 0x00FF) & random_int
 
     def draw_sprite(self):
         """"
@@ -635,7 +634,6 @@ class CPU:
                         self.v[0xF] = 1
 
                     pixel = self.screen.xor_pixel_value(x_pos, y_pos, pixel)
-
                     self.screen.draw_pixel(x_pos, y_pos, pixel)
 
     def skip_if_key_is_pressed(self):
