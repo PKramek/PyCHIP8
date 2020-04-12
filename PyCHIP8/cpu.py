@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 from random import randint
 
 import pygame
@@ -133,14 +134,14 @@ class CPU:
         if self.timer_dt > 0:
             self.timer_dt -= 1
 
-    def load_rom(self, rom_filename: str, address: int = Config.PROGRAM_COUNTER):
+    def load_rom(self, rom_path: Path, address: int = Config.PROGRAM_COUNTER):
         """"
         Loads the rom data to emulator memory
 
-        :param rom_filename: path to rom file
+        :param rom_path: path to rom file
         :param address: address at which the rom data will begin to be stored in emulator memory
         """
-        with open(rom_filename, 'rb') as opened_file:
+        with rom_path.open(mode='rb') as opened_file:
             rom_data = opened_file.read()
             for index, data in enumerate(rom_data):
                 self.memory[address + index] = data

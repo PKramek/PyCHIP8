@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest import mock
 from unittest.mock import Mock
 
@@ -70,15 +71,15 @@ def test_decrement_values_in_timers_should_not_decrement_value_if_zero(cpu):
 
 def test_rom_load(cpu):
     rom_filename = "test/test.ch8"
+    rom_path = Path(rom_filename)
     index_value = cpu.i
 
-    with open(rom_filename, 'rb') as opened_file:
-        rom_data = open(rom_filename, 'rb').read()
-
+    with rom_path.open('rb') as opened_file:
+        rom_data = opened_file.read()
         data_size = len(rom_data)
 
         starting_address = 0
-        cpu.load_rom(rom_filename, starting_address)
+        cpu.load_rom(rom_path, starting_address)
 
         assert cpu.memory[index_value + starting_address: index_value + starting_address + data_size] == rom_data
 
