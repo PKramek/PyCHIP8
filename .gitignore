@@ -1,4 +1,4 @@
 .idea/
 venv/
-../PyCHIP8/__pycache__/
 ROMS/
+__pycache__/
