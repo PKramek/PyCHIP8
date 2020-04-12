@@ -111,7 +111,7 @@ class CPU:
 
     def reset(self):
         """
-        Resets the CPU by reseting all registers and timers to its starting values
+        Resets the CPU by resetting all registers and timers to its starting values
         """
         self.v = bytearray(Config.NUMBER_OF_REGISTERS)
         self.pc = Config.PROGRAM_COUNTER

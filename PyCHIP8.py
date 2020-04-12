@@ -10,12 +10,22 @@ logging.basicConfig(level=logging.WARNING)
 
 
 class PyCHIP8:
+    """
+    Main class of the emulator
+    """
+
     def __init__(self):
+        """
+        PyCHIP8 class constructor, its only purpose is to initialize CPU and Screen objects
+        """
         self.screen = Screen()
         self.cpu = CPU(self.screen)
         self.cpu.reset()
 
     def run(self):
+        """
+        Main method of CHIP-8 emulator
+        """
         single_instruction_interval = (1000 // Config.CPU_CLOCK_SPEED)
 
         pygame.time.set_timer(pygame.USEREVENT, Config.TIMER_DELAY)
