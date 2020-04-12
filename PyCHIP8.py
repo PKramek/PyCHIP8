@@ -28,8 +28,6 @@ class PyCHIP8:
 
         self.rom_path = Path(path)
 
-        #
-
     def run(self):
         """
         Main method of CHIP-8 emulator
