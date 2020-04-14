@@ -1,5 +1,6 @@
 import argparse
 import logging
+from pathlib import Path
 
 import pygame
 
@@ -8,7 +9,6 @@ from PyCHIP8.cpu import CPU
 from PyCHIP8.screen import Screen
 
 logging.basicConfig(level=logging.WARNING)
-from pathlib import Path
 
 
 class PyCHIP8:
